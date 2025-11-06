@@ -30,14 +30,23 @@ def main() -> int:
     parser.add_argument("--start-date", required=True, help="Start date (YYYY-MM-DD)")
     parser.add_argument("--end-date", required=True, help="End date (YYYY-MM-DD)")
     parser.add_argument("--bucket", help="S3 bucket name (optional, for S3 upload)")
-    parser.add_argument("--collection", choices=["natural", "enhanced", "aerosol", "cloud"],
-                       default="natural", help="Image collection type")
-    parser.add_argument("--local-dir", default="./nasa_epic_images",
-                       help="Local download directory")
-    parser.add_argument("--local-only", action="store_true",
-                       help="Download locally only (no S3 upload)")
-    parser.add_argument("--keep-local", action="store_true",
-                       help="Keep local files after S3 upload (ignored if --local-only)")
+    parser.add_argument(
+        "--collection",
+        choices=["natural", "enhanced", "aerosol", "cloud"],
+        default="natural",
+        help="Image collection type",
+    )
+    parser.add_argument(
+        "--local-dir", default="./nasa_epic_images", help="Local download directory"
+    )
+    parser.add_argument(
+        "--local-only", action="store_true", help="Download locally only (no S3 upload)"
+    )
+    parser.add_argument(
+        "--keep-local",
+        action="store_true",
+        help="Keep local files after S3 upload (ignored if --local-only)",
+    )
 
     args = parser.parse_args()
 
@@ -61,6 +70,7 @@ def main() -> int:
 
         if not args.local_only and args.bucket:
             import boto3
+
             s3_client = boto3.client("s3")
             s3_client.head_bucket(Bucket=args.bucket)
 
@@ -103,7 +113,7 @@ def main() -> int:
                     collection=args.collection,
                     date=date_str,
                     image_name=image.image,
-                    format_type="png"
+                    format_type="png",
                 )
 
                 filename = f"{image.image}.png"
@@ -144,7 +154,9 @@ def main() -> int:
     if args.local_only:
         print(f"\nCompleted: {total_downloaded} images downloaded to {local_dir}/")
     else:
-        print(f"\nCompleted: {total_downloaded} images downloaded, {total_uploaded} uploaded to s3://{args.bucket}/nasa-epic/")
+        print(
+            f"\nCompleted: {total_downloaded} images downloaded, {total_uploaded} uploaded to s3://{args.bucket}/nasa-epic/"
+        )
     return 0
 
 

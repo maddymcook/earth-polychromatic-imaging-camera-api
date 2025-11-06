@@ -232,7 +232,7 @@ def test_client_methods(service: EpicApiService) -> bool:
             collection="natural",
             date="2023-10-15",
             image_name="epic_1b_20231015123456",
-            format_type="png"
+            format_type="png",
         )
         expected_parts = ["natural", "2023", "10", "15", "png", "epic_1b_20231015123456.png"]
         if all(part in url for part in expected_parts):
