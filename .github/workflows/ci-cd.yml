@@ -34,7 +34,6 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ruff mypy types-requests
           pip install -e .[dev]
 
       - name: Run Ruff linting
@@ -188,11 +187,10 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_DEFAULT_VERSION }}
 
-      - name: Install security tools
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install bandit[toml] safety
-          pip install -e .
+          pip install -e .[dev]
 
       - name: Run Bandit security linter
         run: bandit -r src/ -f json -o bandit-report.json || true

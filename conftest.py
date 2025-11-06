@@ -1,8 +1,9 @@
 """Shared pytest configuration and fixtures."""
 
-import pytest
 import sys
 from pathlib import Path
+
+import pytest
 
 # Add the src directory to the Python path for imports
 src_dir = Path(__file__).parent.parent / "src"

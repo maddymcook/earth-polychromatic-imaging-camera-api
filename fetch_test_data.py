@@ -7,10 +7,10 @@ test data is always realistic and up-to-date.
 """
 
 import json
-import requests
 import sys
 from pathlib import Path
-from datetime import datetime, timedelta
+
+import requests
 
 # Base URL for NASA EPIC API
 BASE_URL = "https://epic.gsfc.nasa.gov/api"
@@ -70,15 +70,12 @@ def main():
         # Natural color endpoints
         (f"{BASE_URL}/natural", "natural_recent_response.json"),
         (f"{BASE_URL}/natural/all", "natural_all_dates_response.json"),
-
         # Enhanced color endpoints
         (f"{BASE_URL}/enhanced", "enhanced_recent_response.json"),
         (f"{BASE_URL}/enhanced/all", "enhanced_all_dates_response.json"),
-
         # Aerosol index endpoints
         (f"{BASE_URL}/aerosol", "aerosol_recent_response.json"),
         (f"{BASE_URL}/aerosol/all", "aerosol_all_dates_response.json"),
-
         # Cloud fraction endpoints
         (f"{BASE_URL}/cloud", "cloud_recent_response.json"),
         (f"{BASE_URL}/cloud/all", "cloud_all_dates_response.json"),

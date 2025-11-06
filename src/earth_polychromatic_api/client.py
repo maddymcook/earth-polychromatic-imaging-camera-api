@@ -4,8 +4,10 @@ This module provides a client for interacting with NASA's Earth Polychromatic
 Imaging Camera (EPIC) API to retrieve Earth imagery and metadata.
 """
 
+from typing import Any, cast
+
 import requests
-from typing import Optional, Any
+
 
 class EpicApiClient:
     """Client for NASA EPIC API.
@@ -17,7 +19,7 @@ class EpicApiClient:
     BASE_URL = "https://epic.gsfc.nasa.gov/api"
     ARCHIVE_BASE_URL = "https://epic.gsfc.nasa.gov/archive"
 
-    def __init__(self, session: Optional[requests.Session] = None):
+    def __init__(self, session: requests.Session | None = None):
         """Initialize the EPIC API client.
 
         Args:
@@ -34,7 +36,7 @@ class EpicApiClient:
         url = f"{self.BASE_URL}/natural"
         response = self.session.get(url)
         response.raise_for_status()
-        return response.json()
+        return cast("list[dict[str, Any]]", response.json())
 
     def get_natural_by_date(self, date: str) -> list[dict[str, Any]]:
         """Retrieve metadata for natural color imagery for a specific date.
@@ -48,7 +50,7 @@ class EpicApiClient:
         url = f"{self.BASE_URL}/natural/date/{date}"
         response = self.session.get(url)
         response.raise_for_status()
-        return response.json()
+        return cast("list[dict[str, Any]]", response.json())
 
     def get_natural_all_dates(self) -> list[dict[str, str]]:
         """Retrieve a listing of all dates with available natural color imagery.
@@ -59,7 +61,7 @@ class EpicApiClient:
         url = f"{self.BASE_URL}/natural/all"
         response = self.session.get(url)
         response.raise_for_status()
-        return response.json()
+        return cast("list[dict[str, str]]", response.json())
 
     def get_enhanced_recent(self) -> list[dict[str, Any]]:
         """
@@ -71,7 +73,7 @@ class EpicApiClient:
         url = f"{self.BASE_URL}/enhanced"
         response = self.session.get(url)
         response.raise_for_status()
-        return response.json()
+        return cast("list[dict[str, Any]]", response.json())
 
     def get_enhanced_by_date(self, date: str) -> list[dict[str, Any]]:
         """
@@ -86,7 +88,7 @@ class EpicApiClient:
         url = f"{self.BASE_URL}/enhanced/date/{date}"
         response = self.session.get(url)
         response.raise_for_status()
-        return response.json()
+        return cast("list[dict[str, Any]]", response.json())
 
     def get_enhanced_all_dates(self) -> list[dict[str, str]]:
         """
@@ -98,7 +100,7 @@ class EpicApiClient:
         url = f"{self.BASE_URL}/enhanced/all"
         response = self.session.get(url)
         response.raise_for_status()
-        return response.json()
+        return cast("list[dict[str, str]]", response.json())
 
     def get_aerosol_recent(self) -> list[dict[str, Any]]:
         """
@@ -110,7 +112,7 @@ class EpicApiClient:
         url = f"{self.BASE_URL}/aerosol"
         response = self.session.get(url)
         response.raise_for_status()
-        return response.json()
+        return cast("list[dict[str, Any]]", response.json())
 
     def get_aerosol_by_date(self, date: str) -> list[dict[str, Any]]:
         """
@@ -125,7 +127,7 @@ class EpicApiClient:
         url = f"{self.BASE_URL}/aerosol/date/{date}"
         response = self.session.get(url)
         response.raise_for_status()
-        return response.json()
+        return cast("list[dict[str, Any]]", response.json())
 
     def get_aerosol_all_dates(self) -> list[dict[str, str]]:
         """
@@ -137,7 +139,7 @@ class EpicApiClient:
         url = f"{self.BASE_URL}/aerosol/all"
         response = self.session.get(url)
         response.raise_for_status()
-        return response.json()
+        return cast("list[dict[str, str]]", response.json())
 
     def get_cloud_recent(self) -> list[dict[str, Any]]:
         """
@@ -149,7 +151,7 @@ class EpicApiClient:
         url = f"{self.BASE_URL}/cloud"
         response = self.session.get(url)
         response.raise_for_status()
-        return response.json()
+        return cast("list[dict[str, Any]]", response.json())
 
     def get_cloud_by_date(self, date: str) -> list[dict[str, Any]]:
         """
@@ -164,7 +166,7 @@ class EpicApiClient:
         url = f"{self.BASE_URL}/cloud/date/{date}"
         response = self.session.get(url)
         response.raise_for_status()
-        return response.json()
+        return cast("list[dict[str, Any]]", response.json())
 
     def get_cloud_all_dates(self) -> list[dict[str, str]]:
         """
@@ -176,10 +178,11 @@ class EpicApiClient:
         url = f"{self.BASE_URL}/cloud/all"
         response = self.session.get(url)
         response.raise_for_status()
-        return response.json()
+        return cast("list[dict[str, str]]", response.json())
 
-    def build_image_url(self, collection: str, date: str, image_name: str,
-                       format_type: str = "png") -> str:
+    def build_image_url(
+        self, collection: str, date: str, image_name: str, format_type: str = "png"
+    ) -> str:
         """
         Build the full URL for downloading an image from the archive.
 
@@ -192,12 +195,9 @@ class EpicApiClient:
         Returns:
             Complete URL for image download
         """
-        year, month, day = date.split('-')
+        year, month, day = date.split("-")
 
         # Add appropriate extension based on format
-        if format_type == "png":
-            filename = f"{image_name}.png"
-        else:
-            filename = f"{image_name}.jpg"
+        filename = f"{image_name}.png" if format_type == "png" else f"{image_name}.jpg"
 
         return f"{self.ARCHIVE_BASE_URL}/{collection}/{year}/{month}/{day}/{format_type}/{filename}"

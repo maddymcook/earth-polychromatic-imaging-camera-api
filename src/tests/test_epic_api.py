@@ -4,13 +4,13 @@ Tests all endpoints using pytest with mocked responses and test data.
 """
 
 import json
-import pytest
-import requests
 from pathlib import Path
 from unittest.mock import Mock
 
-from earth_polychromatic_api.client import EpicApiClient
+import pytest
+import requests
 
+from earth_polychromatic_api.client import EpicApiClient
 
 # Test data paths
 TEST_DATA_DIR = Path(__file__).parent / "test_datasets"
@@ -215,7 +215,9 @@ class TestEnhancedEndpoints:
         assert result[0]["image"].startswith("epic_RGB_")
         assert result[0]["caption"].find("Enhanced color") != -1
 
-    def test_get_enhanced_all_dates(self, client, mock_session, enhanced_all_dates_data, monkeypatch):
+    def test_get_enhanced_all_dates(
+        self, client, mock_session, enhanced_all_dates_data, monkeypatch
+    ):
         """Test retrieving all available dates for enhanced color imagery.
 
         Validates the /enhanced/all endpoint returns a properly formatted list
@@ -410,7 +412,9 @@ class TestImageUrlBuilder:
         result = client.build_image_url(collection, date, image_name, format_type)
 
         # Assert - verify correct PNG URL structure
-        expected_url = "https://epic.gsfc.nasa.gov/archive/natural/2023/11/05/png/epic_1b_20231105001234.png"
+        expected_url = (
+            "https://epic.gsfc.nasa.gov/archive/natural/2023/11/05/png/epic_1b_20231105001234.png"
+        )
         assert result == expected_url
 
     def test_build_image_url_jpg(self, client, monkeypatch):
@@ -429,7 +433,9 @@ class TestImageUrlBuilder:
         result = client.build_image_url(collection, date, image_name, format_type)
 
         # Assert - verify correct JPG URL structure
-        expected_url = "https://epic.gsfc.nasa.gov/archive/enhanced/2023/10/31/jpg/epic_RGB_20231031123456.jpg"
+        expected_url = (
+            "https://epic.gsfc.nasa.gov/archive/enhanced/2023/10/31/jpg/epic_RGB_20231031123456.jpg"
+        )
         assert result == expected_url
 
     def test_build_image_url_thumbs(self, client, monkeypatch):

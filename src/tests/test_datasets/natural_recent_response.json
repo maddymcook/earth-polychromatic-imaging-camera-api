@@ -1,0 +1,120 @@
+[
+    {
+        "identifier": "20231105001234",
+        "caption": "This image was taken by NASA's EPIC camera onboard the NOAA DSCOVR spacecraft",
+        "image": "epic_1b_20231105001234",
+        "version": "03",
+        "centroid_coordinates": {
+            "lat": -12.345678,
+            "lon": 45.123456
+        },
+        "dscovr_j2000_position": {
+            "x": -1394054.123,
+            "y": -669893.456,
+            "z": -130240.789
+        },
+        "lunar_j2000_position": {
+            "x": 364738.123,
+            "y": -69420.456,
+            "z": -27123.789
+        },
+        "sun_j2000_position": {
+            "x": -148394054.123,
+            "y": -2669893.456,
+            "z": -1130240.789
+        },
+        "attitude_quaternions": {
+            "q0": 0.195598,
+            "q1": 0.371713,
+            "q2": 0.547828,
+            "q3": 0.723943
+        },
+        "date": "2023-11-05 00:12:34",
+        "coords": {
+            "centroid_coordinates": {
+                "lat": -12.345678,
+                "lon": 45.123456
+            },
+            "dscovr_j2000_position": {
+                "x": -1394054.123,
+                "y": -669893.456,
+                "z": -130240.789
+            },
+            "lunar_j2000_position": {
+                "x": 364738.123,
+                "y": -69420.456,
+                "z": -27123.789
+            },
+            "sun_j2000_position": {
+                "x": -148394054.123,
+                "y": -2669893.456,
+                "z": -1130240.789
+            },
+            "attitude_quaternions": {
+                "q0": 0.195598,
+                "q1": 0.371713,
+                "q2": 0.547828,
+                "q3": 0.723943
+            }
+        }
+    },
+    {
+        "identifier": "20231105034523",
+        "caption": "This image was taken by NASA's EPIC camera onboard the NOAA DSCOVR spacecraft",
+        "image": "epic_1b_20231105034523",
+        "version": "03",
+        "centroid_coordinates": {
+            "lat": 23.456789,
+            "lon": -67.890123
+        },
+        "dscovr_j2000_position": {
+            "x": -1394055.456,
+            "y": -669894.789,
+            "z": -130241.012
+        },
+        "lunar_j2000_position": {
+            "x": 364739.456,
+            "y": -69421.789,
+            "z": -27124.012
+        },
+        "sun_j2000_position": {
+            "x": -148394055.456,
+            "y": -2669894.789,
+            "z": -1130241.012
+        },
+        "attitude_quaternions": {
+            "q0": 0.279148,
+            "q1": 0.411421,
+            "q2": 0.543694,
+            "q3": 0.675967
+        },
+        "date": "2023-11-05 03:45:23",
+        "coords": {
+            "centroid_coordinates": {
+                "lat": 23.456789,
+                "lon": -67.890123
+            },
+            "dscovr_j2000_position": {
+                "x": -1394055.456,
+                "y": -669894.789,
+                "z": -130241.012
+            },
+            "lunar_j2000_position": {
+                "x": 364739.456,
+                "y": -69421.789,
+                "z": -27124.012
+            },
+            "sun_j2000_position": {
+                "x": -148394055.456,
+                "y": -2669894.789,
+                "z": -1130241.012
+            },
+            "attitude_quaternions": {
+                "q0": 0.279148,
+                "q1": 0.411421,
+                "q2": 0.543694,
+                "q3": 0.675967
+            }
+        }
+    }
+]

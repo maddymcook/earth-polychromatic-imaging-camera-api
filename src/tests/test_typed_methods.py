@@ -4,23 +4,23 @@ Tests the typed methods that return Pydantic models with validation.
 """
 
 import json
-import pytest
 from pathlib import Path
 from unittest.mock import Mock
 
-from earth_polychromatic_api.service import EpicApiService
-from earth_polychromatic_api.models import (
-    NaturalImagesResponse,
-    EnhancedImagesResponse,
-    AerosolImagesResponse,
-    CloudImagesResponse,
-    AvailableDatesResponse,
-    NaturalImageMetadata,
-    EnhancedImageMetadata,
-    AerosolImageMetadata,
-    CloudImageMetadata,
-)
+import pytest
 
+from earth_polychromatic_api.models import (
+    AerosolImageMetadata,
+    AerosolImagesResponse,
+    AvailableDatesResponse,
+    CloudImageMetadata,
+    CloudImagesResponse,
+    EnhancedImageMetadata,
+    EnhancedImagesResponse,
+    NaturalImageMetadata,
+    NaturalImagesResponse,
+)
+from earth_polychromatic_api.service import EpicApiService
 
 # Test data paths
 TEST_DATA_DIR = Path(__file__).parent.parent.parent / "test_datasets"
@@ -108,9 +108,9 @@ class TestNaturalTypedEndpoints:
         # Verify first image metadata
         first_image = result.root[0]
         assert isinstance(first_image, NaturalImageMetadata)
-        assert hasattr(first_image, 'identifier')
-        assert hasattr(first_image, 'image')
-        assert hasattr(first_image, 'date')
+        assert hasattr(first_image, "identifier")
+        assert hasattr(first_image, "image")
+        assert hasattr(first_image, "date")
 
     def test_get_natural_by_date_typed(self, service, mock_session, natural_recent_data):
         """Test retrieving natural color imagery by date as typed models."""
@@ -146,7 +146,7 @@ class TestNaturalTypedEndpoints:
         assert len(result.root) > 0
         # Verify date format validation
         first_date = result.root[0]
-        assert hasattr(first_date, 'date')
+        assert hasattr(first_date, "date")
 
 
 class TestEnhancedTypedEndpoints:

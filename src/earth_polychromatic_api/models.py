@@ -4,10 +4,11 @@ This module contains data models for all NASA EPIC API response types
 with comprehensive validation, type hints, and field constraints.
 """
 
-from datetime import datetime
-from typing import Optional, ClassVar
-from pydantic import BaseModel, RootModel, Field, field_validator, model_validator, ConfigDict
 import re
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
+from typing_extensions import Self
 
 
 class Coordinates2D(BaseModel):
@@ -16,10 +17,7 @@ class Coordinates2D(BaseModel):
     lat: float = Field(..., ge=-90, le=90, description="Latitude in degrees (-90 to 90)")
     lon: float = Field(..., ge=-180, le=180, description="Longitude in degrees (-180 to 180)")
 
-    model_config = ConfigDict(
-        extra="forbid",
-        validate_assignment=True
-    )
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
 
 class Position3D(BaseModel):
@@ -29,10 +27,7 @@ class Position3D(BaseModel):
     y: float = Field(..., description="Y coordinate in kilometers")
     z: float = Field(..., description="Z coordinate in kilometers")
 
-    model_config = ConfigDict(
-        extra="forbid",
-        validate_assignment=True
-    )
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
 
 class AttitudeQuaternions(BaseModel):
@@ -43,8 +38,8 @@ class AttitudeQuaternions(BaseModel):
     q2: float = Field(..., ge=-1, le=1, description="Quaternion j component")
     q3: float = Field(..., ge=-1, le=1, description="Quaternion k component")
 
-    @model_validator(mode='after')
-    def validate_quaternion_norm(self):
+    @model_validator(mode="after")
+    def validate_quaternion_norm(self) -> Self:
         """Validate that quaternion is approximately normalized."""
         q0, q1, q2, q3 = self.q0, self.q1, self.q2, self.q3
         norm_squared = q0**2 + q1**2 + q2**2 + q3**2
@@ -61,10 +56,7 @@ class AttitudeQuaternions(BaseModel):
 
         return self
 
-    model_config = ConfigDict(
-        extra="forbid",
-        validate_assignment=True
-        )
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
 
 class ImageryCoordinates(BaseModel):
@@ -86,16 +78,15 @@ class ImageryCoordinates(BaseModel):
         ..., description="Satellite attitude quaternions"
     )
 
-    model_config = ConfigDict(
-        extra="forbid",
-        validate_assignment=True
-        )
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
 
 class EpicImageMetadata(BaseModel):
     """Complete metadata for an EPIC image."""
 
-    identifier: str = Field(..., min_length=14, max_length=14, description="Image identifier timestamp")
+    identifier: str = Field(
+        ..., min_length=14, max_length=14, description="Image identifier timestamp"
+    )
     caption: str = Field(..., min_length=10, description="Image caption text")
     image: str = Field(..., min_length=5, description="Base image filename without extension")
     version: str = Field(..., pattern=r"^\d{2}$", description="Image processing version (2 digits)")
@@ -113,7 +104,7 @@ class EpicImageMetadata(BaseModel):
 
     @field_validator("identifier")
     @classmethod
-    def validate_identifier_format(cls, v):
+    def validate_identifier_format(cls, v: str) -> str:
         """Validate identifier follows YYYYMMDDHHMISS format."""
         if not re.match(r"^\d{14}$", v):
             msg = "Identifier must be 14 digits in YYYYMMDDHHMISS format"
@@ -122,13 +113,13 @@ class EpicImageMetadata(BaseModel):
 
     @field_validator("image")
     @classmethod
-    def validate_image_name_format(cls, v):
+    def validate_image_name_format(cls, v: str) -> str:
         """Validate image name follows EPIC naming conventions."""
         valid_patterns = [
-            r"^epic_1b_\d{14}$",          # Natural color: epic_1b_YYYYMMDDHHMISS
-            r"^epic_RGB_\d{14}$",         # Enhanced color: epic_RGB_YYYYMMDDHHMISS
-            r"^epic_uvai_\d{14}$",        # Aerosol index: epic_uvai_YYYYMMDDHHMISS
-            r"^epic_cloudfraction_\d{14}$"  # Cloud fraction: epic_cloudfraction_YYYYMMDDHHMISS
+            r"^epic_1b_\d{14}$",  # Natural color: epic_1b_YYYYMMDDHHMISS
+            r"^epic_RGB_\d{14}$",  # Enhanced color: epic_RGB_YYYYMMDDHHMISS
+            r"^epic_uvai_\d{14}$",  # Aerosol index: epic_uvai_YYYYMMDDHHMISS
+            r"^epic_cloudfraction_\d{14}$",  # Cloud fraction: epic_cloudfraction_YYYYMMDDHHMISS
         ]
 
         if not any(re.match(pattern, v) for pattern in valid_patterns):
@@ -139,7 +130,7 @@ class EpicImageMetadata(BaseModel):
 
     @field_validator("caption")
     @classmethod
-    def validate_caption_content(cls, v):
+    def validate_caption_content(cls, v: str) -> str:
         """Validate that caption contains NASA and EPIC."""
         if "NASA" not in v or "EPIC" not in v:
             msg = "Caption must contain 'NASA' and 'EPIC'"
@@ -147,7 +138,7 @@ class EpicImageMetadata(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def validate_coordinate_consistency(self):
+    def validate_coordinate_consistency(self) -> Self:
         """Validate that direct coordinates match coords object."""
         coords_obj = self.coords
         if not coords_obj:
@@ -159,26 +150,28 @@ class EpicImageMetadata(BaseModel):
             "dscovr_j2000_position": self.dscovr_j2000_position,
             "lunar_j2000_position": self.lunar_j2000_position,
             "sun_j2000_position": self.sun_j2000_position,
-            "attitude_quaternions": self.attitude_quaternions
+            "attitude_quaternions": self.attitude_quaternions,
         }
 
         # Validate consistency (allowing for small floating point differences)
         for field_name, direct_value in direct_coords.items():
             if direct_value and hasattr(coords_obj, field_name):
                 coords_value = getattr(coords_obj, field_name)
-                if direct_value != coords_value:
-                    # For floating point comparisons, check if values are close enough
-                    if hasattr(direct_value, "model_dump") and hasattr(coords_value, "model_dump"):
-                        if not _coordinates_approximately_equal(direct_value.model_dump(), coords_value.model_dump()):
-                            msg = f"Mismatch between direct {field_name} and coords.{field_name}"
-                            raise ValueError(msg)
+                if (
+                    direct_value != coords_value
+                    and hasattr(direct_value, "model_dump")
+                    and hasattr(coords_value, "model_dump")
+                    and not _coordinates_approximately_equal(
+                        direct_value.model_dump(), coords_value.model_dump()
+                    )
+                ):
+                    msg = f"Mismatch between direct {field_name} and coords.{field_name}"
+                    raise ValueError(msg)
 
         return self
 
     model_config = ConfigDict(
-        extra="forbid",
-        validate_assignment=True,
-        json_encoders={datetime: lambda v: v.isoformat()}
+        extra="forbid", validate_assignment=True, json_encoders={datetime: lambda v: v.isoformat()}
     )
 
 
@@ -189,7 +182,7 @@ class AvailableDate(BaseModel):
 
     @field_validator("date")
     @classmethod
-    def validate_date_format(cls, v):
+    def validate_date_format(cls, v: str) -> str:
         """Validate date string can be parsed as a valid date."""
         try:
             datetime.strptime(v, "%Y-%m-%d")
@@ -198,10 +191,7 @@ class AvailableDate(BaseModel):
             raise ValueError(msg) from exc
         return v
 
-    model_config = ConfigDict(
-        extra="forbid",
-        validate_assignment=True
-        )
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
 
 # Collection-specific models for type safety
@@ -210,7 +200,7 @@ class NaturalImageMetadata(EpicImageMetadata):
 
     @field_validator("image")
     @classmethod
-    def validate_natural_image_name(cls, v):
+    def validate_natural_image_name(cls, v: str) -> str:
         """Validate natural color image naming convention."""
         if not re.match(r"^epic_1b_\d{14}$", v):
             msg = f"Natural color image name must match pattern 'epic_1b_YYYYMMDDHHMISS', got '{v}'"
@@ -223,10 +213,12 @@ class EnhancedImageMetadata(EpicImageMetadata):
 
     @field_validator("image")
     @classmethod
-    def validate_enhanced_image_name(cls, v):
+    def validate_enhanced_image_name(cls, v: str) -> str:
         """Validate enhanced color image naming convention."""
         if not re.match(r"^epic_RGB_\d{14}$", v):
-            msg = f"Enhanced color image name must match pattern 'epic_RGB_YYYYMMDDHHMISS', got '{v}'"
+            msg = (
+                f"Enhanced color image name must match pattern 'epic_RGB_YYYYMMDDHHMISS', got '{v}'"
+            )
             raise ValueError(msg)
         return v
 
@@ -236,10 +228,12 @@ class AerosolImageMetadata(EpicImageMetadata):
 
     @field_validator("image")
     @classmethod
-    def validate_aerosol_image_name(cls, v):
+    def validate_aerosol_image_name(cls, v: str) -> str:
         """Validate aerosol index image naming convention."""
         if not re.match(r"^epic_uvai_\d{14}$", v):
-            msg = f"Aerosol index image name must match pattern 'epic_uvai_YYYYMMDDHHMISS', got '{v}'"
+            msg = (
+                f"Aerosol index image name must match pattern 'epic_uvai_YYYYMMDDHHMISS', got '{v}'"
+            )
             raise ValueError(msg)
         return v
 
@@ -249,10 +243,13 @@ class CloudImageMetadata(EpicImageMetadata):
 
     @field_validator("image")
     @classmethod
-    def validate_cloud_image_name(cls, v):
+    def validate_cloud_image_name(cls, v: str) -> str:
         """Validate cloud fraction image naming convention."""
         if not re.match(r"^epic_cloudfraction_\d{14}$", v):
-            msg = f"Cloud fraction image name must match pattern 'epic_cloudfraction_YYYYMMDDHHMISS', got '{v}'"
+            msg = (
+                f"Cloud fraction image name must match pattern "
+                f"'epic_cloudfraction_YYYYMMDDHHMISS', got '{v}'"
+            )
             raise ValueError(msg)
         return v
 
@@ -267,11 +264,11 @@ class NaturalImagesResponse(RootModel[list[NaturalImageMetadata]]):
         """Iterate over items."""
         return iter(self.root)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: int) -> NaturalImageMetadata:
         """Get item by index."""
         return self.root[item]
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return length."""
         return len(self.root)
 
@@ -285,11 +282,11 @@ class EnhancedImagesResponse(RootModel[list[EnhancedImageMetadata]]):
         """Iterate over items."""
         return iter(self.root)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: int) -> EnhancedImageMetadata:
         """Get item by index."""
         return self.root[item]
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return length."""
         return len(self.root)
 
@@ -303,11 +300,11 @@ class AerosolImagesResponse(RootModel[list[AerosolImageMetadata]]):
         """Iterate over items."""
         return iter(self.root)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: int) -> AerosolImageMetadata:
         """Get item by index."""
         return self.root[item]
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return length."""
         return len(self.root)
 
@@ -321,11 +318,11 @@ class CloudImagesResponse(RootModel[list[CloudImageMetadata]]):
         """Iterate over items."""
         return iter(self.root)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: int) -> CloudImageMetadata:
         """Get item by index."""
         return self.root[item]
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return length."""
         return len(self.root)
 
@@ -339,11 +336,11 @@ class AvailableDatesResponse(RootModel[list[AvailableDate]]):
         """Iterate over items."""
         return iter(self.root)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: int) -> AvailableDate:
         """Get item by index."""
         return self.root[item]
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return length."""
         return len(self.root)
 
@@ -354,8 +351,8 @@ def _coordinates_approximately_equal(coord1: dict, coord2: dict, tolerance: floa
     if set(coord1.keys()) != set(coord2.keys()):
         return False
 
-    for key in coord1:
-        val1, val2 = coord1[key], coord2[key]
+    for key, val1 in coord1.items():
+        val2 = coord2[key]
         if isinstance(val1, (int, float)) and isinstance(val2, (int, float)):
             if abs(val1 - val2) > tolerance:
                 return False

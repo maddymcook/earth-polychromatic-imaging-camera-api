@@ -49,6 +49,7 @@ def main():
 
     # Change to project directory
     import os
+
     os.chdir(root_dir)
 
     # Track results
@@ -56,43 +57,27 @@ def main():
 
     # Ruff formatting
     if fix_mode:
-        results.append(run_command(
-            ["ruff", "format", "."],
-            "Ruff formatting (fixing)",
-            fix_mode
-        ))
-        results.append(run_command(
-            ["ruff", "check", ".", "--fix"],
-            "Ruff linting (fixing)",
-            fix_mode
-        ))
+        results.append(run_command(["ruff", "format", "."], "Ruff formatting (fixing)", fix_mode))
+        results.append(
+            run_command(["ruff", "check", ".", "--fix"], "Ruff linting (fixing)", fix_mode)
+        )
     else:
-        results.append(run_command(
-            ["ruff", "format", "--check", "."],
-            "Ruff formatting check"
-        ))
-        results.append(run_command(
-            ["ruff", "check", "."],
-            "Ruff linting check"
-        ))
+        results.append(run_command(["ruff", "format", "--check", "."], "Ruff formatting check"))
+        results.append(run_command(["ruff", "check", "."], "Ruff linting check"))
 
     # MyPy type checking
-    results.append(run_command(
-        ["mypy", "src/earth_polychromatic_api"],
-        "MyPy type checking"
-    ))
+    results.append(run_command(["mypy", "src/earth_polychromatic_api"], "MyPy type checking"))
 
     # Tests with coverage
-    results.append(run_command(
-        ["pytest", "--cov=earth_polychromatic_api", "--cov-report=term-missing"],
-        "Pytest with coverage"
-    ))
+    results.append(
+        run_command(
+            ["pytest", "--cov=earth_polychromatic_api", "--cov-report=term-missing"],
+            "Pytest with coverage",
+        )
+    )
 
     # Package building
-    results.append(run_command(
-        ["python", "-m", "build"],
-        "Package building"
-    ))
+    results.append(run_command(["python", "-m", "build"], "Package building"))
 
     # Summary
     passed = sum(results)
