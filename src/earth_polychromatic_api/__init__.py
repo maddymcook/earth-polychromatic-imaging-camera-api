@@ -23,7 +23,11 @@ from .models import (
 )
 from .service import EpicApiService
 
-__version__ = "1.0.0"
+try:
+    from ._version import version as __version__
+except ImportError:
+    # Fallback for development installations without git tags
+    __version__ = "0.0.0+unknown"
 __all__ = [
     "AerosolImageMetadata",
     "AerosolImagesResponse",

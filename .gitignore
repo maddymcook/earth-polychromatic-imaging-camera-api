@@ -171,4 +171,7 @@ cython_debug/
 bandit-report.json
 safety-report.json
 
+# Auto-generated version files
+src/earth_polychromatic_api/_version.py
+
 .DS_Store

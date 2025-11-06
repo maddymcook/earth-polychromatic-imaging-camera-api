@@ -2,6 +2,20 @@
 
 A Python client for NASA's Earth Polychromatic Imaging Camera (EPIC) API.
 
+## Versioning
+
+This package uses automatic versioning based on Git tags:
+- **Release versions**: When you create a Git tag (e.g., `v1.2.3`), that becomes the package version
+- **Development versions**: Between releases, versions include commit info (e.g., `1.2.4.dev0+g1a2b3c4`)
+- **CI/CD Integration**: GitHub Actions automatically uses the Git tag for publishing
+
+To create a new release:
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+# Creates GitHub release, which triggers CI/CD to publish with version 1.2.3
+```
+
 ## Project Structure
 
 ```
