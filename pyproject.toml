@@ -116,7 +116,10 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"src/tests/*" = ["S101", "ARG001", "ARG002"]  # Allow asserts and unused args in tests
+[tool.ruff.lint.per-file-ignores]
+"src/tests/*" = ["S101"]  # Allow assert statements in tests
+"verify_endpoints.py" = ["T201"]  # Allow print statements in verification script
+"epic_s3_downloader.py" = ["T201", "PLR0912", "PLR0913", "PLR0915", "DTZ007"]  # Allow prints and complexity in utility script
 "fetch_test_data.py" = ["T201"]     # Allow prints in scripts
 "dev-check.py" = ["T201", "S603", "ARG001"]  # Allow prints, subprocess, and unused args in scripts
 "verify_endpoints.py" = ["T201", "D212", "D415", "PERF203", "RUF001", "F401", "E501", "RET505", "W292", "W293"]  # Allow prints and other script-specific rules

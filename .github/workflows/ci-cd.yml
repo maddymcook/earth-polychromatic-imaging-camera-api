@@ -123,6 +123,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build]
     if: github.event_name == 'release' && github.event.action == 'published'
+    environment: dev
     permissions:
       id-token: write # Required for OIDC authentication
       contents: read

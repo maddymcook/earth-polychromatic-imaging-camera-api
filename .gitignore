@@ -170,3 +170,5 @@ cython_debug/
 # Security reports
 bandit-report.json
 safety-report.json
+
+.DS_Store

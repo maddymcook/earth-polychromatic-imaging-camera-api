@@ -52,6 +52,118 @@ Run with coverage:
 pytest --cov=earth_polychromatic_api
 ```
 
+## Endpoint Verification
+
+The `verify_endpoints.py` script provides a comprehensive test of all API endpoints against the live NASA EPIC service. This is useful for:
+
+- Verifying API connectivity and functionality
+- Testing all endpoint types (natural, enhanced, aerosol, cloud)
+- Validating Pydantic model parsing with real data
+- Checking image URL construction
+- Confirming service layer functionality
+
+Run the verification script:
+```bash
+python verify_endpoints.py
+```
+
+The script will test:
+- ✅ All 4 image collection types (natural, enhanced, aerosol, cloud)
+- ✅ Recent images, date-specific images, and available dates endpoints
+- ✅ Raw client methods and typed service methods
+- ✅ Pydantic model validation and collection methods
+- ✅ Image URL construction for different formats
+
+Example output:
+```
+============================================================
+ NASA EPIC API Endpoint Verification
+============================================================
+ℹ️  This script will test all service endpoints...
+✅ Service initialized successfully
+✅ Found 13 recent natural images
+✅ Found 12 natural images for 2023-10-15
+✅ Found 150+ available dates for natural images
+...
+Overall Results: 6/6 tests passed
+✅ 🎉 All endpoints are working correctly!
+```
+
+## NASA EPIC to S3 Download Script
+
+The `epic_s3_downloader.py` script provides a simple way to download NASA EPIC images for specified date ranges and upload them directly to AWS S3. This is useful for:
+
+- Building archives of Earth imagery
+- Creating datasets for analysis or machine learning
+- Automated data pipeline integration
+- Bulk downloading historical imagery
+
+### Usage
+
+```bash
+# Download images locally only (no S3 upload)
+python epic_s3_downloader.py --start-date 2023-10-01 --end-date 2023-10-31 --local-only
+
+# Download natural color images to S3
+python epic_s3_downloader.py --start-date 2023-10-01 --end-date 2023-10-31 --bucket my-epic-bucket
+
+# Download enhanced images for a single day
+python epic_s3_downloader.py --start-date 2023-10-15 --end-date 2023-10-15 --bucket my-bucket --collection enhanced
+
+# Keep local copies after uploading to S3
+python epic_s3_downloader.py --start-date 2023-10-15 --end-date 2023-10-15 --bucket my-bucket --keep-local
+
+# Specify custom local directory
+python epic_s3_downloader.py --start-date 2023-10-15 --end-date 2023-10-15 --local-only --local-dir ./my_epic_images
+```
+
+### Requirements
+
+```bash
+pip install requests           # Always required
+pip install boto3             # Only needed for S3 uploads
+```
+
+### AWS Configuration
+
+Configure AWS credentials using any standard method:
+- `aws configure` (recommended)
+- Environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`
+- IAM roles (when running on EC2)
+- AWS profiles
+
+### Directory Structure
+
+Images are organized locally and in S3 with the following structure:
+```
+# Local structure (default: ./nasa_epic_images/)
+./nasa_epic_images/
+├── natural/2023/10/15/epic_1b_20231015123456.png
+├── enhanced/2023/10/15/epic_1b_20231015123456.png
+├── aerosol/2023/10/15/epic_1b_20231015123456.png
+└── cloud/2023/10/15/epic_1b_20231015123456.png
+
+# S3 structure (when uploading to S3)
+s3://your-bucket/nasa-epic/
+├── natural/2023/10/15/epic_1b_20231015123456.png
+├── enhanced/2023/10/15/epic_1b_20231015123456.png
+├── aerosol/2023/10/15/epic_1b_20231015123456.png
+└── cloud/2023/10/15/epic_1b_20231015123456.png
+```
+
+### Options
+
+- `--start-date` / `--end-date`: Date range in YYYY-MM-DD format
+- `--local-only`: Download images locally only (no S3 upload)
+- `--bucket`: S3 bucket name (required for S3 upload, ignored if `--local-only`)
+- `--collection`: Image type (`natural`, `enhanced`, `aerosol`, `cloud`) - default: `natural`
+- `--local-dir`: Local download directory - default: `./nasa_epic_images`
+- `--keep-local`: Keep local files after S3 upload (ignored if `--local-only`)
+
+### Error Handling
+
+The script continues processing if individual images fail to download or upload, providing status for each operation. Failed downloads are logged but don't stop the overall process.
+
 ## API Endpoints Covered
 
 The test suite covers all NASA EPIC API endpoints:
