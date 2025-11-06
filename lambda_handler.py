@@ -3,6 +3,7 @@ AWS Lambda handler for NASA EPIC image downloader.
 Configurable via event parameters or environment variables.
 """
 
+import contextlib
 import json
 import logging
 import os
