@@ -16,6 +16,48 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+# Constants for Lambda timeout validation
+MAX_RECOMMENDED_DAYS = 3
+ESTIMATED_SECONDS_PER_DAY = 45
+
+
+def validate_date_range_for_lambda(start_date: str, end_date: str, context: Any) -> None:
+    """Validate date range is appropriate for Lambda execution limits."""
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    days_span = (end_dt - start_dt).days + 1
+
+    # Get remaining time in milliseconds, convert to seconds
+    remaining_time = context.get_remaining_time_in_millis() / 1000
+
+    # Estimate: roughly 30-60 seconds per day for cloud images (which can be numerous)
+    # Conservative estimate: 45 seconds per day
+    estimated_time = days_span * ESTIMATED_SECONDS_PER_DAY
+
+    if estimated_time > remaining_time * 0.8:  # Use 80% of remaining time as safety margin
+        logger.warning(
+            "Date range may exceed Lambda timeout: %d days estimated %d seconds, "
+            "remaining %.1f seconds. Consider splitting into smaller ranges.",
+            days_span,
+            estimated_time,
+            remaining_time,
+        )
+
+        if days_span > MAX_RECOMMENDED_DAYS:
+            logger.error(
+                "Date range too large for Lambda (%d days). "
+                "Recommend maximum %d days per invocation for reliable execution.",
+                days_span,
+                MAX_RECOMMENDED_DAYS,
+            )
+            error_msg = (
+                f"Date range too large ({days_span} days). Lambda may timeout. "
+                f"Maximum recommended: {MAX_RECOMMENDED_DAYS} days per invocation. "
+                f"Split into smaller ranges or increase timeout beyond {remaining_time:.0f}s."
+            )
+            raise ValueError(error_msg)
+
+
 def get_date_range(event: dict[str, Any]) -> tuple[str, str]:
     """
     Get date range from event parameters or calculate default.
@@ -108,6 +150,11 @@ def build_command(event: dict[str, Any]) -> list[str]:
     if keep_local:
         cmd.append("--keep-local")
 
+    # Local only (skip S3 upload entirely)
+    local_only = event.get("local_only", os.getenv("LOCAL_ONLY", "false").lower() == "true")
+    if local_only:
+        cmd.append("--local-only")
+
     return cmd
 
 
@@ -178,17 +225,20 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return response
 
     except subprocess.CalledProcessError as e:
+        end_time = datetime.now(tz=timezone.utc)
         error_details = {
             "exit_code": e.returncode,
             "command": " ".join(cmd) if "cmd" in locals() else "Unknown",
             "stdout": e.stdout,
             "stderr": e.stderr,
-            "execution_time_seconds": (datetime.now() - start_time).total_seconds(),
+            "execution_time_seconds": (end_time - start_time).total_seconds(),
         }
 
-        print(f"Command failed with exit code {e.returncode}")
-        print(f"STDOUT: {e.stdout}")
-        print(f"STDERR: {e.stderr}")
+        logger.exception("Command failed with exit code %d", e.returncode)
+        if e.stdout:
+            logger.info("Command STDOUT: %s", e.stdout)
+        if e.stderr:
+            logger.warning("Command STDERR: %s", e.stderr)
 
         return {
             "statusCode": 500,
@@ -198,12 +248,13 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         }
 
     except Exception as e:
+        end_time = datetime.now(tz=timezone.utc)
         error_details = {
             "error_type": type(e).__name__,
             "error_message": str(e),
-            "execution_time_seconds": (datetime.now() - start_time).total_seconds(),
+            "execution_time_seconds": (end_time - start_time).total_seconds(),
         }
 
-        print(f"Job failed with error: {e}")
+        logger.exception("Job failed with error")
 
         return {"statusCode": 500, "success": False, "error": str(e), "details": error_details}
