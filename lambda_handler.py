@@ -19,6 +19,10 @@ logger.setLevel(logging.INFO)
 # Constants for Lambda timeout validation
 MAX_RECOMMENDED_DAYS = 3
 ESTIMATED_SECONDS_PER_DAY = 45
+MIN_RECOMMENDED_TIMEOUT_SECONDS = 60
+
+# Constants for output parsing
+MIN_COMPLETION_LINE_PARTS = 2
 
 
 def validate_date_range_for_lambda(start_date: str, end_date: str, context: Any) -> None:
@@ -184,6 +188,22 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     logger.info("Lambda started with event: %s", json.dumps(event, default=str))
     logger.info("Request ID: %s", context.aws_request_id)
 
+    # Check Lambda timeout configuration
+    timeout_ms = context.get_remaining_time_in_millis()
+    timeout_seconds = timeout_ms / 1000
+    logger.info("Lambda timeout: %.1f seconds remaining", timeout_seconds)
+
+    # Allow environment variable to override minimum timeout warning
+    min_timeout = int(os.getenv("MIN_RECOMMENDED_TIMEOUT", MIN_RECOMMENDED_TIMEOUT_SECONDS))
+
+    if timeout_seconds < min_timeout:
+        logger.warning(
+            "⚠️  Lambda timeout is short (%.1f seconds). "
+            "Recommend increasing to %d+ seconds for reliable image downloads.",
+            timeout_seconds,
+            min_timeout,
+        )
+
     start_time = datetime.now(tz=timezone.utc)
 
     try:
@@ -199,10 +219,32 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Parse output for image count (if available)
         stdout_lines = result.stdout.strip().split("\n")
         images_downloaded = 0
+
+        # Log the output for debugging
+        logger.info("Script output lines: %d", len(stdout_lines))
+        for i, line in enumerate(stdout_lines[-5:], len(stdout_lines) - 5):  # Log last 5 lines
+            logger.info("Output line %d: %s", i, line[:100])  # Truncate long lines
+
+        # Check for common error patterns
+        full_output = result.stdout.lower()
+        if "no module named 'boto3'" in full_output:
+            logger.error("❌ boto3 not installed - S3 uploads will fail")
+        elif "setup failed" in full_output:
+            logger.error("❌ Setup failure detected in script output")
+
         for line in stdout_lines:
-            if "Downloaded" in line and "images" in line:
+            # Look for "Completed: X images downloaded to" pattern
+            if "Completed:" in line and "images downloaded" in line:
+                logger.info("Found completion line: %s", line)
                 with contextlib.suppress(IndexError, ValueError):
-                    images_downloaded = int(line.split()[1])
+                    # Extract number from "Completed: 22 images downloaded to nasa_epic_images/"
+                    parts = line.split()
+                    if len(parts) >= MIN_COMPLETION_LINE_PARTS:
+                        images_downloaded = int(parts[1])
+                        logger.info("Parsed %d images from completion line", images_downloaded)
+            # Also check individual download lines for debugging
+            elif "✅ Downloaded" in line:
+                images_downloaded += 1
 
         response = {
             "statusCode": 200,
