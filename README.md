@@ -120,6 +120,87 @@ Overall Results: 6/6 tests passed
 ✅ 🎉 All endpoints are working correctly!
 ```
 
+## AWS Lambda Handler
+
+The `lambda_handler.py` provides a serverless AWS Lambda function that wraps the `epic_s3_downloader.py` script for cloud-based image processing. This enables:
+
+- **Serverless Image Downloads**: Trigger NASA EPIC downloads via Lambda events
+- **Flexible Date Parameters**: Multiple ways to specify date ranges with clear priority
+- **Production Logging**: Proper logging for AWS CloudWatch integration
+- **Error Handling**: Comprehensive error handling with structured responses
+
+### Parameter Priority System
+
+The Lambda handler uses a 4-tier priority system for date parameters to eliminate confusion:
+
+1. **Explicit Dates** (highest priority)
+   ```json
+   {
+     "start_date": "2024-01-01",
+     "end_date": "2024-01-05"
+   }
+   ```
+
+2. **Relative Dates** (when no explicit dates provided)
+   ```json
+   {
+     "days_back": 3,
+     "date_range_days": 2
+   }
+   ```
+
+3. **Environment Variables** (fallback)
+   - `START_DATE` and `END_DATE` environment variables
+
+4. **Default** (last resort)
+   - Yesterday with 1-day range
+
+### Example Usage
+
+```json
+// Explicit date range (recommended for specific periods)
+{
+  "start_date": "2024-01-01",
+  "end_date": "2024-01-05",
+  "bucket": "my-epic-bucket",
+  "collection": "natural"
+}
+
+// Relative dates (good for recent data)
+{
+  "days_back": 7,
+  "date_range_days": 3,
+  "bucket": "my-epic-bucket"
+}
+
+// Mixed parameters (explicit dates take priority)
+{
+  "start_date": "2024-01-01",
+  "end_date": "2024-01-05",
+  "days_back": 10,  // Ignored - explicit dates win
+  "bucket": "my-epic-bucket"
+}
+```
+
+### Response Format
+
+```json
+{
+  "statusCode": 200,
+  "success": true,
+  "message": "NASA EPIC images downloaded successfully",
+  "details": {
+    "execution_time_seconds": 45.67,
+    "images_downloaded": 12,
+    "command": "python epic_s3_downloader.py ...",
+    "start_time": "2024-01-01T10:00:00Z",
+    "end_time": "2024-01-01T10:00:45Z"
+  },
+  "stdout": "Downloaded 12 images...",
+  "stderr": null
+}
+```
+
 ## NASA EPIC to S3 Download Script
 
 The `epic_s3_downloader.py` script provides a simple way to download NASA EPIC images for specified date ranges and upload them directly to AWS S3. This is useful for:

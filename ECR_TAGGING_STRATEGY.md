@@ -28,7 +28,7 @@ The CI/CD pipeline now uses different tagging strategies based on the type of bu
 - **Duration**: 10 years (effectively permanent)
 - **Purpose**: Preserve all release versions for rollbacks and auditing
 
-### Rule 2: Keep Latest Tag (Priority 2)  
+### Rule 2: Keep Latest Tag (Priority 2)
 - **Keep**: Images tagged as `latest`
 - **Duration**: 10 years (effectively permanent)
 - **Purpose**: Always have the most recent build available
@@ -79,7 +79,7 @@ aws lambda update-function-code \
 
 - ✅ **Immutable Release Versions**: Each release has a permanent, unchanging image
 - ✅ **Easy Rollbacks**: Can deploy any previous release version
-- ✅ **Clear Versioning**: Release tags match git tags exactly  
+- ✅ **Clear Versioning**: Release tags match git tags exactly
 - ✅ **Development Flexibility**: Latest tag always points to most recent build
 - ✅ **Storage Efficiency**: Old development builds are automatically cleaned up
 - ✅ **Audit Trail**: Complete history of release deployments

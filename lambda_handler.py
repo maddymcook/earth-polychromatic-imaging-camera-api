@@ -19,36 +19,59 @@ logger.setLevel(logging.INFO)
 def get_date_range(event: dict[str, Any]) -> tuple[str, str]:
     """
     Get date range from event parameters or calculate default.
-    Priority: event params > environment vars > default (yesterday)
+    Priority:
+    1. Explicit dates (start_date/end_date)
+    2. Relative dates (days_back/date_range_days)
+    3. Environment variables (START_DATE/END_DATE)
+    4. Default to yesterday (1 day back, 1 day range)
     """
-    # Check event parameters first
+    # Priority 1: Check explicit date parameters first
     start_date = event.get("start_date")
     end_date = event.get("end_date")
 
     if start_date and end_date:
+        logger.info("Using explicit date range: %s to %s", start_date, end_date)
         return start_date, end_date
 
-    # Check environment variables
-    start_date = os.getenv("START_DATE")
-    end_date = os.getenv("END_DATE")
+    # Priority 2: Check relative date parameters
+    days_back = event.get("days_back")
+    date_range_days = event.get("date_range_days")
 
-    if start_date and end_date:
+    if days_back is not None or date_range_days is not None:
+        days_back = int(days_back or 1)  # Default to 1 day back
+        date_range_days = int(date_range_days or 1)  # Default to 1 day range
+
+        # Calculate end date (days_back from today)
+        end_date_obj = datetime.now(tz=timezone.utc) - timedelta(days=days_back)
+        # Calculate start date (date_range_days before end date)
+        start_date_obj = end_date_obj - timedelta(days=date_range_days - 1)
+
+        start_date = start_date_obj.strftime("%Y-%m-%d")
+        end_date = end_date_obj.strftime("%Y-%m-%d")
+
+        logger.info(
+            "Using relative dates: %d days back, %d day range (%s to %s)",
+            days_back,
+            date_range_days,
+            start_date,
+            end_date,
+        )
         return start_date, end_date
 
-    # Default to yesterday (EPIC has processing delays)
-    days_back = int(event.get("days_back", os.getenv("DAYS_BACK", "1")))
-    target_date = datetime.now(tz=timezone.utc) - timedelta(days=days_back)
+    # Priority 3: Check environment variables for explicit dates
+    env_start = os.getenv("START_DATE")
+    env_end = os.getenv("END_DATE")
+
+    if env_start and env_end:
+        logger.info("Using environment date range: %s to %s", env_start, env_end)
+        return env_start, env_end
+
+    # Priority 4: Default behavior (yesterday only)
+    default_days_back = int(os.getenv("DAYS_BACK", "1"))
+    target_date = datetime.now(tz=timezone.utc) - timedelta(days=default_days_back)
     date_str = target_date.strftime("%Y-%m-%d")
 
-    logger.info("Using default date range: %s (going back %d days)", date_str, days_back)
-
-    # Check if we want a date range
-    date_range = int(event.get("date_range_days", os.getenv("DATE_RANGE_DAYS", "1")))
-    if date_range > 1:
-        end_date_obj = target_date
-        start_date_obj = target_date - timedelta(days=date_range - 1)
-        return start_date_obj.strftime("%Y-%m-%d"), end_date_obj.strftime("%Y-%m-%d")
-
+    logger.info("Using default date: %s (%d days back)", date_str, default_days_back)
     return date_str, date_str
 
 
@@ -89,41 +112,41 @@ def build_command(event: dict[str, Any]) -> list[str]:
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    AWS Lambda handler for NASA EPIC image downloader.
+    """AWS Lambda handler for NASA EPIC image downloader.
 
     Event parameters (all optional):
-    - start_date: Start date (YYYY-MM-DD)
-    - end_date: End date (YYYY-MM-DD)
-    - bucket: S3 bucket name
+
+    DATE OPTIONS (choose one approach):
+    - start_date & end_date: Explicit date range (YYYY-MM-DD)
+    - days_back & date_range_days: Relative date range from today
+
+    OTHER OPTIONS:
+    - bucket: S3 bucket name (required if S3_BUCKET env var not set)
     - collection: Image collection (natural, enhanced, aerosol, cloud)
-    - days_back: How many days back from today (default: 1)
-    - date_range_days: Number of days to download (default: 1)
     - local_dir: Local directory path
     - keep_local: Keep local files after upload (true/false)
 
     Environment variables (fallbacks):
     - S3_BUCKET: Default S3 bucket
     - COLLECTION: Default collection type
-    - START_DATE/END_DATE: Default date range
-    - DAYS_BACK: Default days back
-    - DATE_RANGE_DAYS: Default date range
+    - START_DATE/END_DATE: Default explicit date range
+    - DAYS_BACK: Default days back from today
     - LOCAL_DIR: Default local directory
     - KEEP_LOCAL: Keep local files
     """
-    print(f"Lambda started with event: {json.dumps(event, default=str)}")
-    print(f"Request ID: {context.aws_request_id}")
+    logger.info("Lambda started with event: %s", json.dumps(event, default=str))
+    logger.info("Request ID: %s", context.aws_request_id)
 
-    start_time = datetime.now()
+    start_time = datetime.now(tz=timezone.utc)
 
     try:
         # Build and execute the download command
         cmd = build_command(event)
-        print(f"Executing command: {' '.join(cmd)}")
+        logger.info("Executing command: %s", " ".join(cmd))
 
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)  # noqa: S603
 
-        end_time = datetime.now()
+        end_time = datetime.now(tz=timezone.utc)
         duration = (end_time - start_time).total_seconds()
 
         # Parse output for image count (if available)
@@ -149,8 +172,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "stderr": result.stderr if result.stderr else None,
         }
 
-        print(f"Job completed successfully in {duration:.2f} seconds")
-        print(f"Downloaded {images_downloaded} images")
+        logger.info("Job completed successfully in %.2f seconds", duration)
+        logger.info("Downloaded %d images", images_downloaded)
 
         return response
 
