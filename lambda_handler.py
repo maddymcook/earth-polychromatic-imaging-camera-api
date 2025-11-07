@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import subprocess  # noqa: S404
+import tempfile
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -145,8 +146,15 @@ def build_command(event: dict[str, Any]) -> list[str]:
     collection = event.get("collection", os.getenv("COLLECTION", "natural"))
     cmd.extend(["--collection", collection])
 
-    # Local directory (optional)
-    if local_dir := event.get("local_dir", os.getenv("LOCAL_DIR")):
+    # Local directory (use /tmp in Lambda environment)
+    local_dir = event.get("local_dir", os.getenv("LOCAL_DIR"))
+    if not local_dir and os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+        # Lambda environment - use writable temp directory
+        temp_dir = tempfile.gettempdir()  # Returns /tmp on Lambda
+        local_dir = f"{temp_dir}/nasa_epic_images"
+        logger.info("Using Lambda temp directory: %s", local_dir)
+
+    if local_dir:
         cmd.extend(["--local-dir", local_dir])
 
     # Keep local files
