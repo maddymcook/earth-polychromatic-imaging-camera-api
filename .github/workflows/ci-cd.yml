@@ -256,28 +256,26 @@ jobs:
               print(f'❌ Date parsing failed: {e}')
               exit(1)
 
-          # Test 2: Handler payload validation (should fail gracefully without AWS creds)
+          # Test 2: Handler payload validation
           print('🧪 Test 2: Handler validation')
           event2 = {
               'start_date': '2024-01-01',
               'end_date': '2024-01-01',
-              'bucket': 'test-bucket',
+              'local_only': True,  # Use local_only to avoid S3 calls
               'collection': 'aerosol'
           }
 
           try:
               result = handler(event2, MockContext())
-              # Should return 500 due to missing AWS credentials, but structure should be valid
+              # Handler should succeed with local_only=True
               assert 'statusCode' in result
-              assert 'body' in result
+              assert result.get('statusCode') == 200
               print('✅ Handler returns proper response structure')
           except Exception as e:
-              # Expected to fail on AWS calls, but should not be payload format errors
-              if 'bucket parameter' in str(e) or 'AWS' in str(e) or 'credentials' in str(e):
-                  print('✅ Handler validation works (failed on AWS as expected)')
-              else:
-                  print(f'❌ Unexpected handler error: {e}')
-                  exit(1)
+              print(f'❌ Unexpected handler error: {e}')
+              import traceback
+              traceback.print_exc()
+              exit(1)
 
           # Test 3: CLI command building
           print('🧪 Test 3: CLI integration test')
