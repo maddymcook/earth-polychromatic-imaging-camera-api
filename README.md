@@ -31,7 +31,7 @@ epic-images --date 2024-11-01 --bucket my-bucket
 epic-metadata
 
 # Download enhanced images to custom local directory
-epic-images --date 2024-11-01 --collection enhanced --local-dir ./my_images --local-only
+epic-images --date 2025-07-01 --collection enhanced --local-dir ./my_images --local-only
 ```
 
 ### CLI Commands

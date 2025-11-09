@@ -188,14 +188,16 @@ class EpicApiClient:
 
         Args:
             collection: Image collection type (natural, enhanced, aerosol, cloud)
-            date: Date string in YYYY-MM-DD format
+            date: Date string in YYYY-MM-DD HH:MM:SS format (from API response)
             image_name: Base image name without extension
             format_type: Image format (png, jpg, thumbs)
 
         Returns:
             Complete URL for image download
         """
-        year, month, day = date.split("-")
+        # Extract date part (ignore time component)
+        date_part = date.split(" ")[0] if " " in date else date
+        year, month, day = date_part.split("-")
 
         # Add appropriate extension based on format
         filename = f"{image_name}.png" if format_type == "png" else f"{image_name}.jpg"

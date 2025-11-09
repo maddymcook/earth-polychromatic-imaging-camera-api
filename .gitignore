@@ -179,4 +179,8 @@ safety-report.json
 src/earth_polychromatic_api/_version.py
 
 .DS_Store
-nasa_epic_images/*
+
+# NASA EPIC image download directories
+nasa_epic_images/
+epic_*/
+my_images/
