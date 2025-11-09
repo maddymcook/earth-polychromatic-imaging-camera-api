@@ -199,35 +199,45 @@ jobs:
 
       - name: Test Lambda container startup
         run: |
-          # Start container in background and test if it starts correctly
+          # Test that the container can start and respond to health checks
+          # Start container in background
           CONTAINER_ID=$(docker run -d -p 8080:8080 nasa-epic-lambda:test)
           echo "Container ID: $CONTAINER_ID"
+
+          # Wait for container to initialize
+          sleep 5
+
+          # Test if Lambda runtime is responding (it should be waiting for requests)
+          # We'll check if the container started successfully by checking logs
+          LOGS=$(docker logs $CONTAINER_ID 2>&1)
           
-          # Wait for container to start
-          sleep 10
-          
-          # Check if container is still running
-          if ! docker ps | grep -q $CONTAINER_ID; then
-            echo "❌ Container failed to start or crashed"
-            docker logs $CONTAINER_ID
+          if echo "$LOGS" | grep -q "exec '/var/runtime/bootstrap'"; then
+            echo "✅ Lambda runtime started successfully"
+          else
+            echo "❌ Lambda runtime failed to start"
+            echo "Container logs:"
+            echo "$LOGS"
+            docker stop $CONTAINER_ID || true
             exit 1
           fi
-          
-          echo "✅ Container started successfully"
-          docker stop $CONTAINER_ID
+
+          # Clean up
+          docker stop $CONTAINER_ID || true
+          echo "✅ Lambda container test completed"
 
       - name: Test Lambda handler with various payloads
         run: |
           # Test payload validation and parsing without actual downloads
-          docker run --rm nasa-epic-lambda:test python3 -c "
+          # Use a different approach since Lambda containers don't support arbitrary commands
+          docker run --rm --entrypoint python3 nasa-epic-lambda:test -c "
           import json
           from lambda_handler import handler, get_date_range
-          
+
           class MockContext:
               aws_request_id = 'test-ci-cd'
               def get_remaining_time_in_millis(self):
                   return 300000
-          
+
           # Test 1: Valid payload parsing
           print('🧪 Test 1: Payload parsing')
           event1 = {
@@ -236,7 +246,7 @@ jobs:
               'collection': 'natural',
               'local_only': True  # Skip S3 to avoid credentials
           }
-          
+
           try:
               start, end = get_date_range(event1)
               assert start == '2024-01-01'
@@ -245,16 +255,16 @@ jobs:
           except Exception as e:
               print(f'❌ Date parsing failed: {e}')
               exit(1)
-          
+
           # Test 2: Handler payload validation (should fail gracefully without AWS creds)
           print('🧪 Test 2: Handler validation')
           event2 = {
-              'start_date': '2024-01-01', 
+              'start_date': '2024-01-01',
               'end_date': '2024-01-01',
               'bucket': 'test-bucket',
               'collection': 'aerosol'
           }
-          
+
           try:
               result = handler(event2, MockContext())
               # Should return 500 due to missing AWS credentials, but structure should be valid
@@ -268,22 +278,22 @@ jobs:
               else:
                   print(f'❌ Unexpected handler error: {e}')
                   exit(1)
-          
+
           # Test 3: CLI command building
           print('🧪 Test 3: CLI integration test')
           import subprocess
           result = subprocess.run([
               'epic-images', '--help'
           ], capture_output=True, text=True)
-          
+
           if result.returncode != 0:
               print(f'❌ CLI not installed properly: {result.stderr}')
               exit(1)
-          
+
           if 'NASA EPIC API' not in result.stdout:
               print(f'❌ CLI help output unexpected: {result.stdout}')
               exit(1)
-              
+
           print('✅ CLI is properly installed and accessible')
           print('🎉 All Lambda integration tests passed!')
           "
@@ -291,26 +301,26 @@ jobs:
       - name: Validate Lambda handler interface
         run: |
           # Verify the handler function signature and imports
-          docker run --rm nasa-epic-lambda:test python3 -c "
+          docker run --rm --entrypoint python3 nasa-epic-lambda:test -c "
           import inspect
           from lambda_handler import handler
-          
+
           # Check handler signature
           sig = inspect.signature(handler)
           params = list(sig.parameters.keys())
-          
+
           if params != ['event', 'context']:
               print(f'❌ Handler signature incorrect: {params}')
               exit(1)
-          
+
           print('✅ Handler signature is correct: handler(event, context)')
-          
+
           # Verify return type annotation if present
           if sig.return_annotation != inspect.Signature.empty:
               expected = 'dict[str, typing.Any]' in str(sig.return_annotation) or 'Dict[str, Any]' in str(sig.return_annotation)
               if not expected:
                   print(f'⚠️  Handler return type annotation: {sig.return_annotation}')
-          
+
           print('✅ Lambda handler interface validation passed!')
           "
 

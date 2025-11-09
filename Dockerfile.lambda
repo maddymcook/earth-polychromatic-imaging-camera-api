@@ -5,10 +5,13 @@ RUN dnf install -y git && dnf clean all
 RUN pip install --upgrade pip
 
 # Copy all source files including git history
-COPY . .
+COPY . ${LAMBDA_TASK_ROOT}
+
+# Change to the task root directory
+WORKDIR ${LAMBDA_TASK_ROOT}
 
 # Install the package in production mode
 RUN pip install --no-cache-dir .
 
-# Set the CMD to your handler
+# Set the CMD to your handler (lambda_handler.py should be in LAMBDA_TASK_ROOT)
 CMD ["lambda_handler.handler"]
