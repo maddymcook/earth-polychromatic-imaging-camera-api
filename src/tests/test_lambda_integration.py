@@ -43,10 +43,7 @@ def test_lambda_handler_payload_format():
         assert "body" in result
 
         # Body should be JSON string or dict
-        if isinstance(result["body"], str):
-            body = json.loads(result["body"])
-        else:
-            body = result["body"]
+        body = json.loads(result["body"]) if isinstance(result["body"], str) else result["body"]
 
         assert isinstance(body, dict)
 
@@ -88,25 +85,8 @@ def test_lambda_handler_event_body_confusion():
     # Test correct format first
     correct_result = handler(correct_event, context)
 
-    # Lambda response may have data directly or in body field
-    correct_data = correct_result
-    if "body" in correct_result:
-        correct_data = (
-            json.loads(correct_result["body"])
-            if isinstance(correct_result["body"], str)
-            else correct_result["body"]
-        )
-
     # Test wrong format - should use defaults instead of payload values
     wrong_result = handler(wrong_event, context)
-
-    wrong_data = wrong_result
-    if "body" in wrong_result:
-        wrong_data = (
-            json.loads(wrong_result["body"])
-            if isinstance(wrong_result["body"], str)
-            else wrong_result["body"]
-        )
 
     # The key test: both should succeed but with different data sources
     assert correct_result.get("statusCode") == 200, "Correct format should succeed"
