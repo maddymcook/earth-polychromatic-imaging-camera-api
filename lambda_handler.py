@@ -6,12 +6,10 @@ Configurable via event parameters or environment variables.
 import json
 import logging
 import os
+import subprocess
 import tempfile
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any
-
-from earth_polychromatic_api.cli import download_images
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -126,22 +124,69 @@ def get_date_range(event: dict[str, Any]) -> tuple[str, str]:
 def run_download_for_date(
     date_str: str,
     collection: str,
-    bucket: str,
-    local_dir: str,
+    bucket: str | None,
+    local_dir: str | None,
     local_only: bool,
 ) -> tuple[int, int]:
-    """Run download for a single date using the CLI function directly."""
-    # Call the CLI function directly
+    """Run download for a single date using CLI commands."""
     try:
-        download_images(
-            date=date_str,
-            collection=collection,
-            bucket=bucket if not local_only else None,
-            local_dir=Path(local_dir) if local_dir else None,
-            local_only=local_only,
-        )
-        # For now, return success - we'd need to modify CLI to return counts
-        return 1, 1 if not local_only else 0
+        # Build the epic-images command
+        cmd = ["epic-images", "--date", date_str, "--collection", collection]
+
+        if local_dir:
+            cmd.extend(["--local-dir", local_dir])
+
+        if local_only:
+            cmd.append("--local-only")
+        elif bucket:
+            cmd.extend(["--bucket", bucket])
+        else:
+            raise ValueError("bucket required when not using local-only mode")
+
+        # Execute the command
+        logger.info("Executing command: %s", " ".join(cmd))
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)  # 5 min timeout
+
+        if result.returncode != 0:
+            logger.error("Command failed with code %d", result.returncode)
+            logger.error("stderr: %s", result.stderr)
+            return 0, 0
+
+        # Parse output to extract counts
+        output = result.stdout
+        logger.info("Command output: %s", output.strip())
+
+        # Look for success message like "✅ Downloaded 10 images to /path"
+        downloaded = 0
+        uploaded = 0
+
+        for line in output.split("\n"):
+            if "✅ Downloaded" in line and "images" in line:
+                # Extract number from line like "✅ Downloaded 10 images to /path"
+                parts = line.split()
+                for i, part in enumerate(parts):
+                    if part == "Downloaded" and i + 1 < len(parts):
+                        try:
+                            downloaded = int(parts[i + 1])
+                            break
+                        except ValueError:
+                            continue
+            if "📤 Uploaded" in line and "images" in line:
+                # Extract upload count
+                parts = line.split()
+                for i, part in enumerate(parts):
+                    if part == "Uploaded" and i + 1 < len(parts):
+                        try:
+                            uploaded = int(parts[i + 1])
+                            break
+                        except ValueError:
+                            continue
+
+        return downloaded, uploaded
+
+    except subprocess.TimeoutExpired:
+        logger.error("Command timeout for date %s", date_str)
+        return 0, 0
     except Exception:
         logger.exception("Error downloading for date %s", date_str)
         return 0, 0
@@ -207,17 +252,25 @@ def execute_downloads(event: dict[str, Any]) -> tuple[int, int, str]:
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """AWS Lambda handler for NASA EPIC image downloader.
 
-    Event parameters (all optional):
+    Uses the epic-images CLI command in Docker container to download images.
+    All event parameters are passed through to the CLI.
 
-    DATE OPTIONS (choose one approach):
+    Example payload:
+    {
+        "start_date": "2024-01-01",
+        "end_date": "2024-01-05",
+        "bucket": "my-s3-bucket",
+        "collection": "aerosol",
+        "local_only": false
+    }
+
+    Event parameters (all optional):
     - start_date & end_date: Explicit date range (YYYY-MM-DD)
     - days_back & date_range_days: Relative date range from today
-
-    OTHER OPTIONS:
-    - bucket: S3 bucket name (required if S3_BUCKET env var not set)
+    - bucket: S3 bucket name (required unless local_only=true)
     - collection: Image collection (natural, enhanced, aerosol, cloud)
     - local_dir: Local directory path
-    - keep_local: Keep local files after upload (true/false)
+    - local_only: Skip S3 upload, download only
 
     Environment variables (fallbacks):
     - S3_BUCKET: Default S3 bucket
@@ -225,10 +278,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     - START_DATE/END_DATE: Default explicit date range
     - DAYS_BACK: Default days back from today
     - LOCAL_DIR: Default local directory
-    - KEEP_LOCAL: Keep local files
     """
     logger.info("Lambda started with event: %s", json.dumps(event, default=str))
-    logger.info("Request ID: %s", context.aws_request_id)
+    request_id = getattr(context, "aws_request_id", "local-test")
+    logger.info("Request ID: %s", request_id)
 
     # Check Lambda timeout configuration
     timeout_ms = context.get_remaining_time_in_millis()

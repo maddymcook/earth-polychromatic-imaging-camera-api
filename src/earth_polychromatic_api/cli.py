@@ -5,6 +5,7 @@ Command-line interface for the NASA EPIC API client.
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import click
 from rich.console import Console
@@ -16,11 +17,132 @@ try:
     HAS_BOTO3 = True
 except ImportError:
     HAS_BOTO3 = False
+    boto3 = None
 
 from earth_polychromatic_api.client import EpicApiClient
 from earth_polychromatic_api.service import EpicApiService
 
 console = Console()
+
+
+def download_images_programmatic(
+    date: str | None = None,
+    collection: str = "natural",
+    bucket: str | None = None,
+    local_dir: Path | None = None,
+    local_only: bool = False,
+) -> tuple[int, int]:
+    """Download NASA EPIC images programmatically (for use by Lambda, etc.).
+
+    Args:
+        date: Date string in YYYY-MM-DD format, defaults to yesterday
+        collection: Image collection type (natural, enhanced, aerosol, cloud)
+        bucket: S3 bucket for upload (required unless local_only=True)
+        local_dir: Local directory path, defaults to nasa_epic_images
+        local_only: If True, only download locally without S3 upload
+
+    Returns:
+        Tuple of (downloaded_count, uploaded_count)
+    """
+    # Validate inputs
+    if not local_only and not bucket:
+        msg = "bucket parameter required when local_only=False"
+        raise ValueError(msg)
+
+    if not local_dir:
+        local_dir = Path("nasa_epic_images")
+
+    date_str = date or (datetime.now(tz=timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    # Get collection method
+    client = EpicApiClient()
+    collection_methods = {
+        "natural": client.get_natural_by_date,
+        "enhanced": client.get_enhanced_by_date,
+        "aerosol": client.get_aerosol_by_date,
+        "cloud": client.get_cloud_by_date,
+    }
+
+    if collection not in collection_methods:
+        msg = f"Invalid collection: {collection}. Must be one of: {list(collection_methods.keys())}"
+        raise ValueError(msg)
+
+    # Fetch images
+    try:
+        images = collection_methods[collection](date_str)
+    except Exception as e:
+        msg = f"Failed to fetch {collection} images for {date_str}: {e}"
+        raise RuntimeError(msg) from e
+
+    if not images:
+        return 0, 0
+
+    # Setup directories and download
+    full_local_dir = local_dir / collection / date_str.replace("-", "/")
+    full_local_dir.mkdir(parents=True, exist_ok=True)
+
+    downloaded = 0
+    uploaded = 0
+
+    # Process each image
+    for image_data in images:
+        try:
+            dl_count, up_count = _download_single_image(
+                client, image_data, collection, full_local_dir, bucket, local_only
+            )
+            downloaded += dl_count
+            uploaded += up_count
+        except Exception:
+            # Continue with next image if one fails
+            continue
+
+    return downloaded, uploaded
+
+
+def _download_single_image(
+    client: EpicApiClient,
+    image_data: dict[str, Any],
+    collection: str,
+    local_dir: Path,
+    bucket: str | None,
+    local_only: bool,
+) -> tuple[int, int]:
+    """Download a single image and optionally upload to S3."""
+    image_name = image_data["image"]
+
+    # Build filename based on collection
+    if collection == "cloud":
+        filename = f"epic_cloudfraction_{image_name.split('_')[-1]}.png"
+    elif collection == "aerosol":
+        filename = f"epic_aerosol_{image_name.split('_')[-1]}.png"
+    else:
+        filename = f"{image_name}.png"
+
+    # Download image
+    image_url = client.build_image_url(collection, image_data["date"], image_name, "png")
+    local_file = local_dir / filename
+
+    response = client.session.get(image_url)
+    response.raise_for_status()
+
+    with local_file.open("wb") as f:
+        f.write(response.content)
+
+    downloaded = 1
+    uploaded = 0
+
+    # Upload to S3 if requested
+    if not local_only and HAS_BOTO3 and bucket:
+        try:
+            s3_client = boto3.client("s3")
+            s3_key = f"{collection}/{image_data['date'].split(' ')[0].replace('-', '/')}/{filename}"
+            s3_client.upload_file(str(local_file), bucket, s3_key)
+            uploaded = 1
+        except Exception:
+            # S3 upload failed but local download succeeded
+            pass
+
+    return downloaded, uploaded
 
 
 def get_date_range(
