@@ -11,8 +11,7 @@ from rich.console import Console
 from rich.table import Table
 
 try:
-    import boto3
-    from botocore.exceptions import BotoCore3Error, ClientError
+    import boto3  # type: ignore
 
     HAS_BOTO3 = True
 except ImportError:
@@ -48,7 +47,7 @@ def get_date_range(
 
 @click.group()
 @click.version_option()
-def main():
+def main() -> None:
     """NASA EPIC API command-line tools."""
 
 
@@ -73,7 +72,7 @@ def download_images(
     bucket: str | None,
     local_dir: Path | None,
     local_only: bool,
-):
+) -> None:
     """Download NASA EPIC images."""
     if not local_only and not bucket:
         console.print("[red]Error: --bucket required (or use --local-only)[/red]")
@@ -143,7 +142,7 @@ def download_images(
                     s3_client.upload_file(str(local_file), bucket, s3_key)
                     uploaded += 1
                     console.print(f"📤 Uploaded to s3://{bucket}/{s3_key}")
-                except (BotoCore3Error, ClientError) as e:
+                except Exception as e:
                     console.print(f"❌ S3 upload failed: {e}")
             elif not local_only and not HAS_BOTO3:
                 console.print("❌ boto3 not available for S3 upload")
@@ -179,7 +178,7 @@ def get_metadata(
     collection: str,
     output_format: str,
     output_file: str | None,
-):
+) -> None:
     """Get metadata for NASA EPIC images."""
     date_str = date or (datetime.now(tz=timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
 
@@ -194,7 +193,7 @@ def get_metadata(
     }
 
     response = service_methods[collection](date_str)
-    images = response.root
+    images = response.root  # type: ignore
 
     if not images:
         console.print(f"No {collection} images found for {date_str}")
