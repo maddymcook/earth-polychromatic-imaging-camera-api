@@ -145,7 +145,7 @@ def run_download_for_date(
 
         # Execute the command
         logger.info("Executing command: %s", " ".join(cmd))
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)  # 5 min timeout
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)  # noqa: S603
 
         if result.returncode != 0:
             logger.error("Command failed with code %d", result.returncode)

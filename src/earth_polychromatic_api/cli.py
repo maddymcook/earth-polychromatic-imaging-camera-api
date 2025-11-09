@@ -92,8 +92,9 @@ def download_images_programmatic(
             )
             downloaded += dl_count
             uploaded += up_count
-        except Exception:
+        except Exception as e:
             # Continue with next image if one fails
+            click.echo(f"⚠️  Failed to download {image_data.get('image', 'unknown')}: {e}", err=True)
             continue
 
     return downloaded, uploaded
@@ -138,9 +139,9 @@ def _download_single_image(
             s3_key = f"{collection}/{image_data['date'].split(' ')[0].replace('-', '/')}/{filename}"
             s3_client.upload_file(str(local_file), bucket, s3_key)
             uploaded = 1
-        except Exception:
+        except Exception as e:
             # S3 upload failed but local download succeeded
-            pass
+            click.echo(f"⚠️  S3 upload failed for {filename}: {e}", err=True)
 
     return downloaded, uploaded
 
