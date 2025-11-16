@@ -10,6 +10,8 @@ import subprocess
 import tempfile
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from pathlib import Path
+
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -228,9 +230,16 @@ def execute_downloads(event: dict[str, Any]) -> tuple[int, int, str]:
         date_str = current_date.strftime("%Y-%m-%d")
         logger.info("Processing date: %s", date_str)
 
-        downloaded, uploaded = run_download_for_date(
-            date_str, collection, bucket, local_dir, local_only
-        )
+    from earth_polychromatic_api.cli import download_images_programmatic
+    
+    downloaded, uploaded = download_images_programmatic(
+        date=date_str,
+        collection=collection,
+        bucket=bucket,
+        local_dir=Path(local_dir) if local_dir else None,
+        local_only=local_only
+    )
+
 
         total_downloaded += downloaded
         total_uploaded += uploaded
