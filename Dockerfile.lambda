@@ -4,14 +4,15 @@ FROM public.ecr.aws/lambda/python:3.12
 RUN dnf install -y git && dnf clean all
 RUN pip install --upgrade pip
 
-# Copy all source files including git history
-COPY . ${LAMBDA_TASK_ROOT}
+# Copy source into /app
+COPY . /app
+WORKDIR /app
 
-# Change to the task root directory
-WORKDIR ${LAMBDA_TASK_ROOT}
-
-# Install the package in production mode
+# Install your package system-wide (installs epic-images CLI)
 RUN pip install --no-cache-dir .
 
-# Set the CMD to your handler (lambda_handler.py should be in LAMBDA_TASK_ROOT)
+# Copy the lambda handler into Lambda's runtime folder
+COPY lambda_handler.py ${LAMBDA_TASK_ROOT}
+
+# Default command
 CMD ["lambda_handler.handler"]
